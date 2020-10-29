@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <title>Sign up</title>
+    </head>
+    <style>
+        * {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
+                Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue',
+                sans-serif;
+            box-sizing: border-box;
+        }
+
+        html,
+        body {
+            height: 100%;
+            min-height: 100vh;
+            margin: 0;
+        }
+
+        body {
+            display: flex;
+        }
+
+        #sign {
+            display: flex;
+            flex-direction: column;
+            width: 100%;
+            max-width: 300px;
+            margin: auto;
+        }
+
+        #sign > .title {
+            text-align: center;
+        }
+
+        #sign > .label {
+            font-size: 1.125em;
+            margin: 4px 0;
+        }
+
+        #sign > .input {
+            appearance: none;
+            font-size: 1.375em;
+            color: #333;
+            padding: 8px 12px;
+            border: 2px solid #757575;
+            margin: 0 0 12px 0;
+            border-radius: 4px;
+            transition: outline-color 0.15s ease-out,
+                border-color 0.15s ease-out;
+        }
+
+        #sign > .input:hover,
+        #sign > .input:focus {
+            border-color: #007aff;
+            outline-color: #007aff;
+        }
+
+        #sign > .button {
+            appearance: none;
+            color: white;
+            font-size: 1.375em;
+            font-weight: 600;
+            margin: 4px 0 0 0;
+            padding: 12px;
+            background-color: #007aff;
+            border: 0;
+            border-radius: 4px;
+        }
+
+        #error {
+            color: #ff3b30;
+            margin: 8px 0;
+            font-size: 1.175em;
+        }
+    </style>
+    <script>
+        const id = (id) => document.getElementById(id)
+
+        fetch('/refresh', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            credentials: 'same-origin'
+        })
+            .then((res) => res.json())
+            .then(({ success }) => {
+                if (success) window.location.replace('/')
+            })
+
+        document.addEventListener(
+            'DOMContentLoaded',
+            () => {
+                id('sign').addEventListener('submit', async (event) => {
+                    event.preventDefault()
+
+                    let form = Object.keys(event.srcElement)
+                        .filter((key) => event.target[key].name)
+                        .map((key) => ({
+                            [event.target[key].name]: event.target[key].value
+                        }))
+
+                    const { success, detail } = await fetch('/signup', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        credentials: 'same-origin',
+                        body: JSON.stringify(Object.assign(...form))
+                    }).then((res) => res.json())
+
+                    if (!success) return (id('error').textContent = detail)
+
+                    window.location.replace('/')
+                })
+            },
+            { once: true }
+        )
+    </script>
+    <body>
+        <form
+            id="sign"
+            method="POST"
+            action="/signin"
+            enctype="application/json"
+        >
+            <h1 class="title">Sign up</h1>
+
+            <label class="label" for="user">Username</label>
+            <input
+                class="input"
+                name="name"
+                type="text"
+                required
+                placeholder="Username"
+            />
+
+            <label class="label" for="pass">Password</label>
+            <input
+                class="input"
+                name="pass"
+                type="password"
+                required
+                placeholder="Password"
+            />
+
+            <p id="error"></p>
+
+            <button class="button">Sign up</button>
+        </form>
+    </body>
+</html>
