@@ -1,17 +1,23 @@
 use actix::{Actor, Addr, Handler, Message, StreamHandler};
+use actix_identity::Identity;
 use actix_web_actors::ws;
 
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 
+use crate::libs::jwt::decode;
+
+type ChatContext = HashMap<String, HashMap<u128, Addr<ChatRoom>>>;
+
 // ? Share State
 pub struct ChatList {
-    pub addr: Arc<Mutex<HashMap<String, Addr<ChatRoom>>>>,
+    pub addr: Arc<Mutex<ChatContext>>,
 }
 
 pub struct ChatRoom {
-    pub clients: Arc<Mutex<HashMap<String, Addr<ChatRoom>>>>,
-    pub key: Option<String>,
+    pub clients: Arc<Mutex<ChatContext>>,
+    pub room: String,
+    pub connection: u128,
     pub sender: String,
 }
 
@@ -25,12 +31,19 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for ChatRoom {
             Ok(ws::Message::Ping(msg)) => ctx.pong(&msg),
             Ok(ws::Message::Text(text)) => {
                 let clients = self.clients.lock().unwrap();
-                let receiver = reverse_key(self.key.to_owned().unwrap());
 
-                if clients.contains_key(&receiver) {
-                    let receiver_client = clients.get(&receiver).unwrap();
+                if !clients.contains_key(&self.room) {
+                    return;
+                }
 
-                    receiver_client.do_send(ChatMessage {
+                let receivers = clients.get(&self.room).unwrap();
+
+                for (receiver_connection, receiver) in receivers.iter() {
+                    if receiver_connection == &self.connection {
+                        return;
+                    }
+
+                    receiver.do_send(ChatMessage {
                         data: format!(r#"["{}","{}","{}"]"#, "msg", text, self.sender),
                     });
                 }
@@ -43,9 +56,12 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for ChatRoom {
     fn finished(&mut self, _ctx: &mut Self::Context) {
         let mut clients = self.clients.lock().unwrap();
 
-        clients.remove(self.key.as_ref().unwrap());
+        let receivers = clients.get_mut(&self.room).unwrap();
+        receivers.remove(&self.connection);
 
-        println!("{} disconnected", self.key.as_ref().unwrap());
+        if receivers.len() == 0 {
+            clients.remove(&self.room);
+        }
     }
 }
 
@@ -63,26 +79,33 @@ impl Handler<ChatMessage> for ChatRoom {
     }
 }
 
-#[derive(Message)]
-#[rtype(result = "()")]
-pub struct Identifier {
-    pub key: String,
-}
-
-impl Handler<Identifier> for ChatRoom {
-    type Result = ();
-
-    fn handle(&mut self, identifier: Identifier, _ctx: &mut Self::Context) {
-        self.key = Some(identifier.key);
+pub fn create_room(sender: String, receiver: String) -> String {
+    if sender.as_bytes() < receiver.as_bytes() {
+        sender + "-" + &receiver
+    } else {
+        receiver + "-" + &sender
     }
 }
 
-pub fn create_key(sender: String, receiver: String) -> String {
-    sender + "-" + &receiver
+pub fn get_sender(auth: &Identity) -> String {
+    let token = auth.identity().unwrap();
+    let jwt_token = decode(&token).unwrap();
+
+    jwt_token.name
 }
 
-pub fn reverse_key(key: String) -> String {
-    let k: Vec<&str> = key.split("-").collect();
+pub fn add_connection(
+    address: Arc<Mutex<ChatContext>>,
+    addr: Addr<ChatRoom>,
+    room: String,
+    key: u128,
+) {
+    let mut address = address.lock().unwrap();
 
-    k[1].to_owned() + "-" + k[0]
+    if !address.contains_key(&room) {
+        address.insert(room.to_owned(), HashMap::new());
+    }
+
+    let connection = address.get_mut(&room).unwrap();
+    connection.insert(key, addr);
 }

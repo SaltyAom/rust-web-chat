@@ -8,8 +8,8 @@ use actix_web_actors::ws;
 
 use std::fs;
 
-use crate::chat::service::{create_key, ChatList, ChatRoom, Identifier};
-use crate::libs::jwt::decode;
+use crate::chat::service::{create_room, ChatList, ChatRoom, get_sender, add_connection};
+use crate::libs::time::get_current_time;
 use crate::user::constant::Sign;
 
 #[get("/ws/{receiver}")]
@@ -17,24 +17,23 @@ pub async fn websocket(
     Path(receiver): Path<String>,
     request: HttpRequest,
     stream: Payload,
-    chatroom: Data<ChatList>,
+    chat_list: Data<ChatList>,
     auth: Identity,
 ) -> impl Responder {
     if auth.identity().is_none() {
         return HttpResponse::Unauthorized().json(Sign::UNAUTHORIZED);
     }
 
-    let token = auth.identity().unwrap();
-    let jwt_token = decode(&token).unwrap();
-    let sender = jwt_token.name;
-
-    let key = create_key(sender.to_owned(), receiver);
+    let sender = get_sender(&auth);
+    let room = create_room(sender.to_owned(), receiver);
+    let key = get_current_time();
 
     let chat_room = ws::start_with_addr(
         ChatRoom {
-            clients: chatroom.addr.clone(),
+            clients: chat_list.addr.clone(),
             sender: sender,
-            key: None,
+            room: room.to_owned(),
+            connection: key
         },
         &request,
         stream,
@@ -45,14 +44,7 @@ pub async fn websocket(
         Err(e) => return HttpResponse::from_error(e),
     };
 
-    addr.do_send(Identifier {
-        key: key.to_owned(),
-    });
-
-    let mut addresses = chatroom.addr.lock().unwrap();
-    if !addresses.contains_key(&key) {
-        addresses.insert(key, addr);
-    }
+    add_connection(chat_list.addr.clone(), addr, room, key);
 
     response
 }
