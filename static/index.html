@@ -6,42 +6,99 @@
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <script>
             const id = (id) => document.getElementById(id)
-            const append = (message) => {
+            const append = (message, from) => {
                 let paragraph = document.createElement('p')
+                paragraph.classList.add(`message`)
+
+                if (user === from) paragraph.classList.add('-mine')
+
                 paragraph.prepend(document.createTextNode(message))
 
                 id('received').append(paragraph)
             }
 
-            const channel = new BroadcastChannel('wsEvent')
+            let user
+            let receiver
 
-            channel.addEventListener('message', (event) => {
-                console.log('Broadcast:', event.data)
-                append(event.data)
+            fetch('/refresh', {
+                method: 'POST',
+                credentials: 'same-origin'
             })
+                .then((res) => res.json())
+                .then(({ success, detail }) => {
+                    if (!success) window.location.replace('/signin')
 
-            const websocket = new WebSocket('ws://localhost:8080/ws')
-
-            websocket.addEventListener('open', (event) => {
-                console.log('Connected:', event)
-            })
-
-            websocket.addEventListener('message', (event) => {
-                console.log('Received:', event.data)
-                append(event.data)
-            })
-
-            document.addEventListener('DOMContentLoaded', () => {
-                id('form').addEventListener('submit', (event) => {
-                    event.preventDefault()
-
-                    let [messageElement] = event.target,
-                        { value: message } = messageElement
-
-                    websocket.send(message)
-                    channel.postMessage(message)
+                    user = detail
+                    id('logged_as').textContent = detail
                 })
-            })
+
+            document.addEventListener(
+                'DOMContentLoaded',
+                () => {
+                    id('connector').addEventListener(
+                        'submit',
+                        (event) => {
+                            event.preventDefault()
+
+                            let receiverName = id('receiver').value
+                            receiver = receiverName
+
+                            id('chat-with').textContent = receiverName
+
+                            const websocket = new WebSocket(
+                                `ws://localhost:8080/ws/${receiver}`
+                            )
+
+                            websocket.addEventListener('open', (event) => {
+                                console.log('Connected:', event)
+
+                                id('room').style.display = 'block'
+                                id('connector').style.display = 'none'
+                            })
+
+                            websocket.addEventListener('message', (event) => {
+                                let [type, data, from] = JSON.parse(event.data)
+
+                                console.log('Received:', data)
+                                append(data, from)
+
+                                window.scrollTo(0, document.body.scrollHeight, {
+                                    smooth: false
+                                })
+                            })
+
+                            id('messenger').addEventListener(
+                                'submit',
+                                (event) => {
+                                    event.preventDefault()
+
+                                    let [messageElement] = event.target,
+                                        { value: message } = messageElement
+
+                                    websocket.send(message)
+                                    append(message, user)
+
+                                    window.scrollTo(
+                                        0,
+                                        document.body.scrollHeight,
+                                        {
+                                            smooth: false
+                                        }
+                                    )
+
+                                    id('message-box').value = ''
+                                }
+                            )
+                        },
+                        {
+                            once: true
+                        }
+                    )
+                },
+                {
+                    once: true
+                }
+            )
         </script>
         <style>
             * {
@@ -50,17 +107,220 @@
                     'Helvetica Neue', sans-serif;
                 box-sizing: border-box;
             }
+
+            body {
+                margin: 0;
+            }
+
+            #connector {
+                display: flex;
+                width: 100%;
+                height: 100vh;
+            }
+
+            #connector > .container {
+                display: flex;
+                flex-direction: column;
+                justify-content: center;
+                width: 100%;
+                max-width: 300px;
+                margin: auto;
+            }
+
+            #connector > .container > .label {
+                font-weight: 500;
+                margin: 0 0 4px 8px;
+                color: #757575;
+            }
+
+            #receiver {
+                appearance: none;
+                color: #333;
+                font-size: 1.5em;
+                font-weight: 500;
+                background-color: #eee;
+                margin: 0;
+                padding: 12px 16px;
+                border: 0;
+                border-radius: 8px;
+                outline: none;
+            }
+
+            #connector > .container > .connect {
+                appearance: none;
+                display: flex;
+                justify-content: center;
+                align-content: center;
+                color: #007aff;
+                font-size: 1.25em;
+                font-weight: 500;
+                text-align: center;
+                background-color: transparent;
+                margin: 20px 0 0 0;
+                padding: 12px 16px;
+                border: 0;
+                border-radius: 8px;
+                outline: none;
+                cursor: pointer;
+            }
+
+            #connector > .container > .connect:hover,
+            #connector > .container > .connect:focus {
+                background-color: rgba(0, 123, 255, 0.0875);
+            }
+
+            #connector > .container > .user {
+                font-weight: 500;
+                font-size: 0.875em;
+                color: #aaa;
+                margin: 0 0 40px 8px;
+            }
+
+            #logged_as {
+                color: #007aff;
+                font-weight: 700;
+            }
+
+            #room {
+                position: relative;
+                max-width: 300px;
+                width: 100%;
+                height: 100vh;
+                margin: 0 auto;
+            }
+
+            #chat-header {
+                position: fixed;
+                z-index: 10;
+                top: 0;
+                display: flex;
+                align-items: center;
+                width: inherit;
+                height: 60px;
+                max-width: inherit;
+                padding: 0 16px;
+                background-color: #fff;
+                box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            }
+
+            #chat-header > .title {
+                margin: 0;
+            }
+
+            #messenger {
+                position: fixed;
+                bottom: 16px;
+                display: flex;
+                flex-direction: row;
+                justify-content: space-between;
+                padding: 0 16px;
+                background-color: #eee;
+                border-radius: 8px;
+            }
+
+            #messenger > .message-box {
+                appearance: none;
+                display: inline-flex;
+                flex: 1;
+                height: 44px;
+                font-size: 1.25em;
+                font-weight: 500;
+                background-color: transparent;
+                margin: 0;
+                padding: 0;
+                border: 0;
+                color: #333;
+                outline: none;
+            }
+
+            #messenger > .send {
+                appearance: none;
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                width: 44px;
+                height: 44px;
+                padding: 0;
+                background-color: transparent;
+                border: 0;
+                color: #007aff;
+            }
+
+            #received {
+                display: flex;
+                flex-direction: column;
+                padding: 72px 0;
+            }
+
+            .message {
+                display: inline-flex;
+                margin: 2px 0;
+                padding: 8px 16px;
+                border-radius: 10000px;
+                background-color: #eee;
+                color: #333;
+                font-weight: 500;
+                text-align: left;
+                align-self: flex-start;
+                max-width: 70%;
+            }
+
+            .message.-mine {
+                background-color: #55a0ff;
+                color: #fff;
+                text-align: right;
+                align-self: flex-end;
+            }
         </style>
     </head>
     <body>
-        <h1>Actix Web Socket</h1>
-        <form id="form" action="/client" method="POST">
-            <input name="message" type="text" placeholder="Message" required />
-            <button>Send</button>
+        <form id="connector">
+            <div class="container">
+                <p class="user">
+                    Logged in as
+                    <span id="logged_as"></span>
+                </p>
+                <label class="label" for="to">Message with</label>
+                <input
+                    id="receiver"
+                    name="to"
+                    type="text"
+                    placeholder="Username"
+                />
+                <button class="connect">Connect</button>
+            </div>
         </form>
-        <section>
-            <header>
-                <h2>Received</h2>
+        <section id="room" style="display: none">
+            <form id="messenger" method="POST" autocomplete="off">
+                <input
+                    id="message-box"
+                    class="message-box"
+                    name="message"
+                    type="text"
+                    placeholder="Message"
+                    required
+                />
+                <button class="send">
+                    <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        width="24"
+                        height="24"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        class="icon"
+                        stroke="currentColor"
+                        stroke-width="2"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        class="feather feather-send"
+                    >
+                        <line x1="22" y1="2" x2="11" y2="13"></line>
+                        <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+                    </svg>
+                </button>
+            </form>
+            <header id="chat-header">
+                <h1 id="chat-with" class="title">SaltyAom</h1>
             </header>
             <section id="received"></section>
         </section>

@@ -8,8 +8,8 @@ use actix_web::{
 
 use sqlx::PgPool;
 
-use tokio::time;
 use std::time::Duration;
+use tokio::time;
 
 use std::fs::read_to_string;
 
@@ -78,9 +78,7 @@ pub async fn sign_in(user: Json<User>, connection: Data<PgPool>, auth: Identity)
 
     time::delay_for(Duration::from_millis(250)).await;
 
-    let signed: bool = user.sign_in(&connection).await.unwrap_or_else(|_| {
-        false
-    });
+    let signed: bool = user.sign_in(&connection).await.unwrap_or_else(|_| false);
 
     if !signed {
         return HttpResponse::Unauthorized().json(Sign::INCORRECT);

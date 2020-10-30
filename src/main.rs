@@ -1,10 +1,9 @@
 mod user;
 mod libs;
-mod ws;
 mod models;
 mod chat;
 
-use actix_web::{ HttpServer, App, middleware::Compress };
+use actix_web::{ HttpServer, App, middleware::Compress, web::Data };
 use actix_identity::{CookieIdentityPolicy, IdentityService};
 
 use sqlx::postgres::PgPoolOptions;
@@ -15,9 +14,12 @@ use dotenv::dotenv;
 use anyhow::Result;
 
 use std::env;
+use std::sync::{ Mutex, Arc };
+use std::collections::HashMap;
 
 use user::controller::user_module;
 use chat::controller::chat_module;
+use chat::service::ChatList;
 
 #[actix_web::main]
 async fn main() -> Result<()> {
@@ -25,7 +27,9 @@ async fn main() -> Result<()> {
 
     let database_url = env::var("DATABASE_URL").expect("Database URL");
     let connection_pool = PgPoolOptions::new().connect(&database_url).await?;
-        
+
+    let chat_state = Data::new(ChatList { addr: Arc::new(Mutex::new(HashMap::new())) });
+
     HttpServer::new(move ||
         App::new()
             .wrap(IdentityService::new(
@@ -40,6 +44,7 @@ async fn main() -> Result<()> {
             )
             .wrap(Compress::default())
             .data(connection_pool.clone())
+            .app_data(chat_state.clone())
             .configure(user_module)
             .configure(chat_module)
     )
