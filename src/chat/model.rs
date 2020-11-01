@@ -1,4 +1,4 @@
-use actix::{Actor, Addr, AsyncContext, Handler, Message, StreamHandler};
+use actix::{Actor, Addr, Handler, Message, StreamHandler, Arbiter};
 use actix_web_actors::ws;
 
 use anyhow::Result;
@@ -66,17 +66,15 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for ChatRoom {
 
                 let save_message_to_database = async move {
                     let message = chat_message.save(room, future_database_connection).await;
-
+                    
                     match message {
                         Ok(data) => data,
                         Err(_) => ()
                     }
                 };
 
-                let commit = actix::fut::wrap_future::<_, Self>(save_message_to_database);
-                ctx.spawn(commit);
-            }
-            Ok(ws::Message::Binary(bin)) => ctx.binary(bin),
+                Arbiter::spawn(save_message_to_database);
+           }
             _ => (),
         }
     }
