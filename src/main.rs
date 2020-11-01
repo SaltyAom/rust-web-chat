@@ -19,7 +19,7 @@ use std::collections::HashMap;
 
 use user::controller::user_module;
 use chat::controller::chat_module;
-use chat::service::ChatList;
+use chat::model::ChatList;
 
 #[actix_web::main]
 async fn main() -> Result<()> {

@@ -1,14 +1,20 @@
 use actix_identity::Identity;
 use actix_web::{
-    get,
+    get, post,
     web::{Data, Path, Payload, ServiceConfig},
     HttpRequest, HttpResponse, Responder,
 };
 use actix_web_actors::ws;
 
+use sqlx::PgPool;
+
+use std::default::Default;
 use std::fs;
 
-use crate::chat::service::{create_room, ChatList, ChatRoom, get_sender, add_connection};
+use crate::chat::{
+    model::{Chat, ChatList, ChatRoom},
+    service::{add_connection, create_room, get_sender},
+};
 use crate::libs::time::get_current_time;
 use crate::user::constant::Sign;
 
@@ -18,6 +24,7 @@ pub async fn websocket(
     request: HttpRequest,
     stream: Payload,
     chat_list: Data<ChatList>,
+    database_connection: Data<PgPool>,
     auth: Identity,
 ) -> impl Responder {
     if auth.identity().is_none() {
@@ -33,7 +40,8 @@ pub async fn websocket(
             clients: chat_list.addr.clone(),
             sender: sender,
             room: room.to_owned(),
-            connection: key
+            connection: key,
+            database_connection: database_connection.get_ref().to_owned(),
         },
         &request,
         stream,
@@ -56,6 +64,33 @@ pub async fn client() -> HttpResponse {
     HttpResponse::Ok().content_type("text/html").body(html)
 }
 
+#[post("/history/{receiver}")]
+pub async fn history(
+    Path(receiver): Path<String>,
+    auth: Identity,
+    connection: Data<PgPool>,
+) -> HttpResponse {
+    let sender = get_sender(&auth);
+    let key = create_room(sender.to_owned(), receiver);
+
+    let chat = Chat {
+        ..Default::default()
+    };
+
+    let history = chat.history(key, 1, &connection).await;
+
+    match history {
+        Ok(message) => {
+            // println!("Message Length {}", message.len());
+            HttpResponse::Ok().json(message)
+        }
+        Err(_err) => {
+            // println!("{:?}", _err);
+            return HttpResponse::InternalServerError().body("".to_owned());
+        }
+    }
+}
+
 pub fn chat_module(config: &mut ServiceConfig) {
-    config.service(client).service(websocket);
+    config.service(client).service(websocket).service(history);
 }

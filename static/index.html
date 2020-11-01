@@ -43,6 +43,8 @@
                             let receiverName = id('receiver').value
                             receiver = receiverName
 
+                            loadHistory(receiver)
+
                             id('chat-with').textContent = receiverName
 
                             const websocket = new WebSocket(
@@ -99,6 +101,15 @@
                     once: true
                 }
             )
+
+            const loadHistory = async () => {
+                let history = await fetch(`/history/${receiver}?${Date.now()}`, {
+                    method: 'POST',
+                    credentials: "same-origin"
+                }).then(res => res.json())
+
+                history.reverse().forEach(message => append(message.data, message.sender))
+            }
         </script>
         <style>
             * {
