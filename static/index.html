@@ -15,6 +15,12 @@
                 paragraph.prepend(document.createTextNode(message))
 
                 id('received').append(paragraph)
+
+                requestAnimationFrame(() => {
+                    window.scrollTo(0, document.body.scrollHeight, {
+                        smooth: false
+                    })
+                })
             }
 
             let user
@@ -61,12 +67,8 @@
                             websocket.addEventListener('message', (event) => {
                                 let [type, data, from] = JSON.parse(event.data)
 
-                                console.log('Received:', data)
+                                console.log('Received:', event)
                                 append(data, from)
-
-                                window.scrollTo(0, document.body.scrollHeight, {
-                                    smooth: false
-                                })
                             })
 
                             id('messenger').addEventListener(

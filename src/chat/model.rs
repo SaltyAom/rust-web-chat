@@ -55,7 +55,7 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for ChatRoom {
                 if receivers.len() > 1 {
                     for (receiver_connection, receiver) in receivers.iter() {
                         if receiver_connection != &self.connection {
-                            receiver.do_send(chat_message.clone());
+                            receiver.try_send(chat_message.clone()).expect("Actor queue");
                         }
                     }
                 }
@@ -125,7 +125,7 @@ impl Handler<ChatMessage> for ChatRoom {
     fn handle(&mut self, message: ChatMessage, ctx: &mut Self::Context) {
         ctx.text(format!(
             r#"["{}","{}","{}"]"#,
-            "msg", message.data, self.sender
+            "msg", message.data, message.sender
         ));
     }
 }
