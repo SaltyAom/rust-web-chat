@@ -44,8 +44,8 @@
             font-size: 1.375em;
             color: #333;
             padding: 8px 12px;
-            border: 2px solid #757575;
             margin: 0 0 12px 0;
+            border: 2px solid #ccc;
             border-radius: 4px;
             transition: outline-color 0.15s ease-out,
                 border-color 0.15s ease-out;
@@ -62,11 +62,23 @@
             color: white;
             font-size: 1.375em;
             font-weight: 600;
-            margin: 4px 0 0 0;
+            text-align: center;
+            text-decoration: none;
+            margin: 4px 0;
             padding: 12px;
             background-color: #007aff;
             border: 0;
             border-radius: 4px;
+        }
+
+        #sign > .button.-secondary {
+            color: #007aff;
+            background-color: transparent;
+        }
+
+        #sign > .button.-secondary:hover,
+        #sign > .button.-secondary:focus {
+            background-color: rgba(0, 123, 255, 0.0875);
         }
 
         #error {
@@ -135,6 +147,7 @@
                 type="text"
                 required
                 placeholder="Username"
+                enterkeyhint="next"
             />
 
             <label class="label" for="pass">Password</label>
@@ -144,11 +157,16 @@
                 type="password"
                 required
                 placeholder="Password"
+                enterkeyhint="send"
+                autocomplete="current-password"
             />
 
             <p id="error"></p>
 
             <button class="button">Sign in</button>
+            <a href="/signup" class="button -secondary">
+                Sign up
+            </a>
         </form>
     </body>
 </html>

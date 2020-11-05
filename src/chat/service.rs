@@ -4,7 +4,7 @@ use std::sync::{Arc, Mutex};
 use actix::Addr;
 use actix_identity::Identity;
 
-use crate::chat::model::{ChatContext, ChatRoom};
+use crate::chat::model::{chat_context::ChatContext, chat_room::ChatRoom};
 
 use crate::libs::jwt::decode;
 

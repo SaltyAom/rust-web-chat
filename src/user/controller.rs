@@ -134,7 +134,7 @@ pub fn client_sign_out(auth: Identity) -> HttpResponse {
     HttpResponse::Ok().json(Sign::OUT)
 }
 
-#[get("/signout")]
+#[post("/signout")]
 pub fn sign_out(auth: Identity) -> HttpResponse {
     auth.forget();
 

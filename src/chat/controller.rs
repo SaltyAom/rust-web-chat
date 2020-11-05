@@ -11,12 +11,13 @@ use sqlx::PgPool;
 use std::default::Default;
 use std::fs;
 
-use crate::chat::{
-    model::{Chat, ChatList, ChatRoom},
-    service::{add_connection, create_room, get_sender},
-};
-use crate::libs::time::get_current_time;
+use crate::chat::model::{chat::Chat, chat_room::ChatRoom};
+use crate::chat::service::{add_connection, create_room, get_sender};
+
 use crate::user::constant::Sign;
+
+use crate::libs::time::get_current_time;
+use crate::models::state::ChatList;
 
 #[get("/ws/{receiver}")]
 pub async fn websocket(

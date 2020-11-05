@@ -35,12 +35,32 @@
                     if (!success) window.location.replace('/signin')
 
                     user = detail
-                    id('logged_as').textContent = detail
+                    id('signed_as').textContent = detail
                 })
+
+            let isRequestingSignOut = false
 
             document.addEventListener(
                 'DOMContentLoaded',
                 () => {
+                    if (isRequestingSignOut) return
+
+                    isRequestingSignOut = true
+
+                    id('sign-out').addEventListener('click', () => {
+                        fetch('/signout', {
+                            method: 'POST',
+                            credentials: 'same-origin'
+                        })
+                            .then((res) => res.json())
+                            .then(({ success, detail }) => {
+                                if (success) window.location.replace('/signin')
+                            })
+                            .finally(() => {
+                                isRequestingSignOut = false
+                            })
+                    })
+
                     id('connector').addEventListener(
                         'submit',
                         (event) => {
@@ -105,12 +125,17 @@
             )
 
             const loadHistory = async () => {
-                let history = await fetch(`/history/${receiver}?${Date.now()}`, {
-                    method: 'POST',
-                    credentials: "same-origin"
-                }).then(res => res.json())
+                let history = await fetch(
+                    `/history/${receiver}?${Date.now()}`,
+                    {
+                        method: 'POST',
+                        credentials: 'same-origin'
+                    }
+                ).then((res) => res.json())
 
-                history.reverse().forEach(message => append(message.data, message.sender))
+                history
+                    .reverse()
+                    .forEach((message) => append(message.data, message.sender))
             }
         </script>
         <style>
@@ -123,6 +148,13 @@
 
             body {
                 margin: 0;
+            }
+
+            #sign-out {
+                color: #007aff;
+                cursor: pointer;
+                text-decoration: none;
+                margin: 0 0 0 4px;
             }
 
             #connector {
@@ -182,14 +214,20 @@
                 background-color: rgba(0, 123, 255, 0.0875);
             }
 
-            #connector > .container > .user {
+            #connector > .container > .user-management {
+                display: flex;
+                flex-direction: row;
+                justify-content: space-between;
+            }
+
+            #connector > .container > .user-management > .user {
                 font-weight: 500;
                 font-size: 0.875em;
                 color: #aaa;
                 margin: 0 0 40px 8px;
             }
 
-            #logged_as {
+            #signed_as {
                 color: #007aff;
                 font-weight: 700;
             }
@@ -289,16 +327,20 @@
     <body>
         <form id="connector">
             <div class="container">
-                <p class="user">
-                    Logged in as
-                    <span id="logged_as"></span>
-                </p>
+                <aside class="user-management">
+                    <p class="user">
+                        Signed in as
+                        <span id="signed_as"></span>
+                    </p>
+                    <a id="sign-out">Sign out</a>
+                </aside>
                 <label class="label" for="to">Message with</label>
                 <input
                     id="receiver"
                     name="to"
                     type="text"
                     placeholder="Username"
+                    enterkeyhint="go"
                 />
                 <button class="connect">Connect</button>
             </div>
@@ -312,6 +354,7 @@
                     type="text"
                     placeholder="Message"
                     required
+                    enterkeyhint="enter"
                 />
                 <button class="send">
                     <svg
