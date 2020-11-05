@@ -168,5 +168,4 @@ Seperated chat message as document and access using document key is faster, sinc
 Querying from specific structure is exactly faster than querying from whole table.
   
 Now please let me rest and watch Fubuki livestream.
-![fbk]
-(https://static.wikia.nocookie.net/virtualyoutuber/images/2/2c/Shirakami_Fubuki_-_Destroyer_Azur_Lane_Chibi.gif/revision/latest/scale-to-width-down/180?cb=20191126133045)
+![fbk](https://static.wikia.nocookie.net/virtualyoutuber/images/2/2c/Shirakami_Fubuki_-_Destroyer_Azur_Lane_Chibi.gif/revision/latest/scale-to-width-down/180?cb=20191126133045)
